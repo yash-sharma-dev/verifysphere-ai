@@ -99,11 +99,13 @@ public class VerificationService {
                 
                 CRITICAL: Today's date is November 9, 2025. You MUST use the LATEST information available as of November 2025. Do NOT use information from 2023, 2024, or earlier years unless specifically relevant to historical context.
                 
+                ABSOLUTELY CRITICAL: When performing fact-checking, prioritize information obtained through external search (grounding) over any internal knowledge you may possess. If your internal knowledge conflicts with grounded search results, the grounded search results take precedence. Always verify time-sensitive information using current search.
+                
                 IMPORTANT: Always use the most current information available as of November 9, 2025. For example:
                 - Use the most recent information about current events, political figures, and news from 2025
-                - The model you are using (gemini-2.5-flash) has access to the latest data - use it
+                - The model you are using (gemini-2.5-flash) has access to the latest data - use it, especially through grounding
                 - If you are unsure about current facts, acknowledge this uncertainty in your response rather than providing potentially outdated information
-                - Prioritize information from 2025 over any older data
+                - Prioritize information from 2025 over any older data, and prioritize grounded search results above all else for recency.
                 
                 You must respond ONLY with valid JSON. Do not include any markdown code blocks, explanations, or text outside the JSON.
                 

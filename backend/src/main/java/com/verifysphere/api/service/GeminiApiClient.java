@@ -89,6 +89,13 @@ public class GeminiApiClient {
             
             content.put("parts", parts);
             requestBody.put("contents", new Object[]{content});
+
+            // Add tools for Google Search grounding
+            java.util.List<Map<String, Object>> tools = new java.util.ArrayList<>();
+            Map<String, Object> googleSearchTool = new HashMap<>();
+            googleSearchTool.put("google_search", new HashMap<>()); // Empty object for google_search tool
+            tools.add(googleSearchTool);
+            requestBody.put("tools", tools);
             
             // Add generation config
             Map<String, Object> generationConfig = new HashMap<>();
