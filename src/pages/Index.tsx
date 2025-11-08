@@ -128,7 +128,7 @@ const Index = () => {
                 verificationId={verificationData.title}
               />
 
-              <div className="flex justify-center">
+              <div className="flex justify-center gap-4">
                 <button
                   onClick={() => {
                     setShowResults(false);

@@ -2,6 +2,7 @@ import { Shield, History, User, LogOut } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,6 +31,8 @@ export const Header = () => {
               <span className="hidden sm:inline">History</span>
             </Link>
           </Button>
+          
+          <ThemeToggle />
           
           {isAuthenticated && user ? (
             <DropdownMenu>
