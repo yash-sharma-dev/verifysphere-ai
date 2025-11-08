@@ -1,0 +1,11 @@
+com/verifysphere/api/service/VerificationService.class
+com/verifysphere/api/controller/HealthCheckController.class
+com/verifysphere/api/ApiApplication.class
+com/verifysphere/api/controller/VerifyController$ErrorResponse.class
+com/verifysphere/api/config/WebConfig.class
+com/verifysphere/api/dto/VerificationResult$CommunityData.class
+com/verifysphere/api/dto/VerifyRequest.class
+com/verifysphere/api/dto/VerificationResult.class
+com/verifysphere/api/controller/VerifyController.class
+com/verifysphere/api/service/UrlContentExtractor.class
+com/verifysphere/api/dto/VerificationResult$Evidence.class
