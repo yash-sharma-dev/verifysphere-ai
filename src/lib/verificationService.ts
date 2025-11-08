@@ -1,3 +1,5 @@
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+
 type CredibilityLevel = 'true' | 'mostly-true' | 'uncertain' | 'mostly-false' | 'false';
 
 interface Evidence {
@@ -21,174 +23,66 @@ export interface VerificationResult {
   };
 }
 
-// Keywords that might indicate false information
-const suspiciousKeywords = [
-  'fake', 'hoax', 'conspiracy', 'unverified', 'rumor', 'allegedly',
-  'breaking: you won\'t believe', 'doctors hate', 'one weird trick'
-];
+interface VerifyRequest {
+  input: string;
+  type: 'url' | 'text' | 'image';
+}
 
-// Keywords that indicate credible sources
-const credibleKeywords = [
-  'study', 'research', 'peer-reviewed', 'journal', 'university',
-  'scientific', 'evidence', 'data', 'analysis', 'report'
-];
+interface ErrorResponse {
+  error: string;
+}
 
-// Generate verification result based on input
+// Call the backend API to verify content
 export const verifyContent = async (
   input: string,
   type: 'url' | 'text' | 'image'
 ): Promise<VerificationResult> => {
-  // Simulate API delay
-  await new Promise((resolve) => setTimeout(resolve, 1500));
-
-  // For images, use a generic analysis since we can't analyze image content
-  if (type === 'image') {
-    // Images are typically uncertain without OCR/AI image analysis
-    const score = Math.floor(Math.random() * 40) + 40; // 40-80
-    let level: CredibilityLevel;
-    if (score < 50) level = 'uncertain';
-    else if (score < 70) level = 'mostly-true';
-    else level = 'true';
-
-    const title = 'Image Verification';
-    const explanation = 'This image has been analyzed. Without advanced image recognition, we recommend verifying the content through other means. Check the source and cross-reference with trusted news outlets.';
-
-    return {
-      score,
-      level,
-      title,
-      explanation,
-      evidence: [{
-        type: 'neutral',
-        title: 'Image Analysis',
-        source: 'Verification System',
-        url: '#',
-        excerpt: 'Image verification requires advanced analysis. Please verify the content through text-based fact-checking sources.',
-      }],
-      community: {
-        upvotes: Math.floor(Math.random() * 300) + 50,
-        downvotes: Math.floor(Math.random() * 100) + 20,
-        comments: Math.floor(Math.random() * 100) + 10,
-      },
+  try {
+    // For images, we'll send the base64 data URL to the backend
+    // The backend can process it or return a default response
+    // Don't trim image data URLs as they contain base64 data
+    const requestBody: VerifyRequest = {
+      input: type === 'image' ? input : input.trim(),
+      type: type,
     };
-  }
 
-  const inputLower = input.toLowerCase();
-  
-  // Analyze content
-  const suspiciousCount = suspiciousKeywords.filter(kw => inputLower.includes(kw)).length;
-  const credibleCount = credibleKeywords.filter(kw => inputLower.includes(kw)).length;
-  
-  // Determine credibility based on keywords and content length
-  let score: number;
-  let level: CredibilityLevel;
-  
-  if (suspiciousCount > 2) {
-    score = Math.floor(Math.random() * 30) + 10; // 10-40
-    level = score < 25 ? 'false' : 'mostly-false';
-  } else if (suspiciousCount > 0) {
-    score = Math.floor(Math.random() * 30) + 40; // 40-70
-    level = score < 50 ? 'mostly-false' : 'uncertain';
-  } else if (credibleCount > 2) {
-    score = Math.floor(Math.random() * 30) + 70; // 70-100
-    level = score > 85 ? 'true' : 'mostly-true';
-  } else if (credibleCount > 0) {
-    score = Math.floor(Math.random() * 30) + 50; // 50-80
-    level = score < 60 ? 'uncertain' : score < 75 ? 'mostly-true' : 'true';
-  } else {
-    // Neutral/uncertain
-    score = Math.floor(Math.random() * 40) + 40; // 40-80
-    if (score < 50) level = 'uncertain';
-    else if (score < 70) level = 'mostly-true';
-    else level = 'true';
-  }
+    const response = await fetch(`${API_URL}/api/verify`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
 
-  // Generate title from input
-  const title = input.length > 60 
-    ? input.substring(0, 60) + '...'
-    : input || 'Verification Request';
+    if (!response.ok) {
+      const errorData: ErrorResponse = await response.json().catch(() => ({
+        error: `HTTP error! status: ${response.status}`,
+      }));
+      throw new Error(errorData.error || `Verification failed: ${response.statusText}`);
+    }
 
-  // Generate explanation
-  const explanations = {
-    'true': 'Our AI analysis, cross-referenced with multiple verified sources, indicates this claim is accurate. The content aligns with established facts and reputable sources.',
-    'mostly-true': 'Our AI analysis, cross-referenced with verified sources, indicates this claim is largely accurate. While some details may vary, the core claim is well-supported.',
-    'uncertain': 'Our AI analysis found mixed evidence regarding this claim. Some sources support it while others contradict it. Further verification is recommended.',
-    'mostly-false': 'Our AI analysis found significant evidence contradicting this claim. Multiple verified sources dispute the accuracy of this information.',
-    'false': 'Our AI analysis, cross-referenced with multiple verified sources, indicates this claim is false. The content contradicts established facts and reputable sources.',
-  };
-
-  // Generate evidence
-  const evidence: Evidence[] = [];
-  
-  if (level === 'true' || level === 'mostly-true') {
-    evidence.push({
-      type: 'supporting',
-      title: 'Verified Source Confirmation',
-      source: 'Fact-Checking Database',
-      url: 'https://example.com/source1',
-      excerpt: 'Multiple independent sources confirm the accuracy of this claim. The information aligns with verified data from reputable institutions.',
-    });
-    evidence.push({
-      type: 'supporting',
-      title: 'Expert Analysis',
-      source: 'Expert Review Panel',
-      url: 'https://example.com/source2',
-      excerpt: 'Subject matter experts have reviewed this content and found it to be consistent with established knowledge in the field.',
-    });
-  } else if (level === 'false' || level === 'mostly-false') {
-    evidence.push({
-      type: 'contradicting',
-      title: 'Fact-Check Dispute',
-      source: 'Fact-Checking Organization',
-      url: 'https://example.com/dispute1',
-      excerpt: 'This claim has been fact-checked and found to be inaccurate. Multiple verified sources contradict the information presented.',
-    });
-    evidence.push({
-      type: 'contradicting',
-      title: 'Expert Correction',
-      source: 'Expert Review',
-      url: 'https://example.com/dispute2',
-      excerpt: 'Experts in the field have identified significant inaccuracies in this claim. The information does not align with established facts.',
-    });
-  } else {
-    evidence.push({
-      type: 'neutral',
-      title: 'Mixed Evidence Found',
-      source: 'Verification Database',
-      url: 'https://example.com/neutral1',
-      excerpt: 'Analysis found both supporting and contradicting evidence. The claim requires further investigation to determine accuracy.',
-    });
-  }
-
-  // Generate community feedback (randomized but realistic)
-  const baseUpvotes = Math.floor(Math.random() * 500) + 100;
-  const baseDownvotes = Math.floor(Math.random() * 200) + 50;
-  
-  // Adjust based on credibility
-  const upvotes = level === 'true' || level === 'mostly-true' 
-    ? baseUpvotes + Math.floor(Math.random() * 500)
-    : level === 'false' || level === 'mostly-false'
-    ? baseUpvotes - Math.floor(Math.random() * 300)
-    : baseUpvotes;
+    const result: VerificationResult = await response.json();
     
-  const downvotes = level === 'false' || level === 'mostly-false'
-    ? baseDownvotes + Math.floor(Math.random() * 300)
-    : level === 'true' || level === 'mostly-true'
-    ? baseDownvotes - Math.floor(Math.random() * 100)
-    : baseDownvotes;
+    // Validate the result structure (score can be 0, so check for undefined/null)
+    if (result.score === undefined || result.score === null || 
+        !result.level || !result.title || !result.explanation) {
+      throw new Error('Invalid response format from server');
+    }
 
-  return {
-    score,
-    level,
-    title,
-    explanation: explanations[level],
-    evidence,
-    community: {
-      upvotes: Math.max(0, upvotes),
-      downvotes: Math.max(0, downvotes),
-      comments: Math.floor(Math.random() * 200) + 50,
-    },
-  };
+    return result;
+  } catch (error) {
+    console.error('Error verifying content:', error);
+    
+    // If it's a network error or the backend is unavailable, throw a helpful error
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      throw new Error('Unable to connect to verification service. Please check if the backend server is running.');
+    }
+    
+    // Re-throw the error with the original message
+    throw error instanceof Error 
+      ? error 
+      : new Error('An unexpected error occurred during verification');
+  }
 };
 
 // Store verification in history

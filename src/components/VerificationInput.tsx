@@ -44,9 +44,20 @@ export const VerificationInput = ({ onVerify, isVerifying = false }: Verificatio
 
       const reader = new FileReader();
       reader.onloadend = () => {
-        const result = reader.result as string;
-        setImagePreview(result);
-        setInput(result); // Store data URL for verification
+        if (reader.result) {
+          const result = reader.result as string;
+          setImagePreview(result);
+          setInput(result); // Store data URL for verification
+        } else {
+          toast.error("Failed to read image", {
+            description: "Could not process the image file. Please try again.",
+          });
+        }
+      };
+      reader.onerror = () => {
+        toast.error("Error reading file", {
+          description: "An error occurred while reading the image file. Please try again.",
+        });
       };
       reader.readAsDataURL(file);
     }

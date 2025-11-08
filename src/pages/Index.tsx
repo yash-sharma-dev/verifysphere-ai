@@ -30,16 +30,24 @@ const Index = () => {
 
     try {
       const result = await verifyContent(input, type);
-      setVerificationData(result);
-      saveVerificationToHistory(input, type, result);
+      // Ensure score is a number
+      const normalizedResult = {
+        ...result,
+        score: typeof result.score === 'number' ? result.score : parseInt(result.score, 10) || 0
+      };
+      console.log('Verification result:', normalizedResult);
+      setVerificationData(normalizedResult);
+      saveVerificationToHistory(input, type, normalizedResult);
       setShowResults(true);
       toast.success("Verification complete!", {
-        description: `Credibility score: ${result.score}%`,
+        description: `Credibility score: ${normalizedResult.score}%`,
       });
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
       toast.error("Verification failed", {
-        description: "Please try again later.",
+        description: errorMessage,
       });
+      console.error("Verification error:", error);
     } finally {
       setIsVerifying(false);
     }
