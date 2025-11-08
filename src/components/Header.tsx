@@ -1,5 +1,5 @@
 import { Shield, History, User, LogOut } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -15,13 +15,20 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 export const Header = () => {
   const { user, logout, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogoClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    // Navigate to home with reset state
+    navigate("/", { replace: true, state: { reset: Date.now() } });
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between px-4">
-        <Link to="/" className="flex items-center gap-2">
+        <Link to="/" className="flex items-center gap-2" onClick={handleLogoClick}>
           <Shield className="h-8 w-8 text-primary" />
-          <h1 className="text-2xl font-bold text-primary">FakeCheck</h1>
+          <h1 className="text-2xl font-bold text-primary">VerifySphere</h1>
         </Link>
         
         <nav className="flex items-center gap-2">

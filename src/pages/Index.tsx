@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { VerificationInput } from "@/components/VerificationInput";
 import { CredibilityScore } from "@/components/CredibilityScore";
@@ -10,9 +11,22 @@ import { verifyContent, saveVerificationToHistory, type VerificationResult } fro
 import { toast } from "sonner";
 
 const Index = () => {
+  const location = useLocation();
   const [showResults, setShowResults] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [verificationData, setVerificationData] = useState<VerificationResult | null>(null);
+
+  // Reset verification results when navigating to home page
+  useEffect(() => {
+    // Reset state when location changes to home page or when reset state is present
+    if (location.pathname === "/") {
+      const resetState = (location.state as { reset?: number })?.reset;
+      if (resetState) {
+        setShowResults(false);
+        setVerificationData(null);
+      }
+    }
+  }, [location.pathname, location.state]);
 
   const handleVerify = async (input: string, type: 'url' | 'text' | 'image') => {
     if (!input || (!input.trim() && type !== 'image')) {
@@ -68,7 +82,7 @@ const Index = () => {
               </div>
               <h1 className="text-5xl md:text-6xl font-bold text-foreground mb-4">
                 Fight Misinformation with{" "}
-                <span className="text-primary">FakeCheck</span>
+                <span className="text-primary">VerifySphere</span>
               </h1>
               <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
                 Verify news credibility in seconds using advanced AI, trusted sources, 
@@ -156,7 +170,7 @@ const Index = () => {
       <footer className="border-t border-border mt-20">
         <div className="container mx-auto px-4 py-8">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground">
-            <p>© 2024 FakeCheck. Fighting misinformation through technology and community.</p>
+            <p>© 2024 VerifySphere. Fighting misinformation through technology and community.</p>
             <div className="flex gap-6">
               <a href="#" className="hover:text-foreground transition-colors">About</a>
               <a href="#" className="hover:text-foreground transition-colors">Privacy</a>

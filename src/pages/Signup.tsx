@@ -74,7 +74,7 @@ const Signup = () => {
               </div>
               <CardTitle className="text-2xl font-bold">Create an account</CardTitle>
               <CardDescription>
-                Enter your information to get started with FakeCheck
+                Enter your information to get started with VerifySphere
               </CardDescription>
             </CardHeader>
             <CardContent>

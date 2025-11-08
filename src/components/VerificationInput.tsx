@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Search, Link as LinkIcon, FileText, Image as ImageIcon, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,11 +11,35 @@ interface VerificationInputProps {
   isVerifying?: boolean;
 }
 
+const VERIFYING_MESSAGES = [
+  "Letting the thought marinate",
+  "Just hold my cup of tea",
+  "Just wait till I cook",
+  "Let me see what's the problem",
+  "Counting electrons",
+  "Breaking down your ego"
+];
+
 export const VerificationInput = ({ onVerify, isVerifying = false }: VerificationInputProps) => {
   const [input, setInput] = useState("");
   const [activeTab, setActiveTab] = useState<'url' | 'text' | 'image'>('url');
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [currentMessageIndex, setCurrentMessageIndex] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Rotate through verifying messages
+  useEffect(() => {
+    if (!isVerifying) {
+      setCurrentMessageIndex(0);
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setCurrentMessageIndex((prev) => (prev + 1) % VERIFYING_MESSAGES.length);
+    }, 2000); // Change message every 2 seconds
+
+    return () => clearInterval(interval);
+  }, [isVerifying]);
 
   const handleVerify = () => {
     if (input.trim() || imagePreview) {
@@ -172,11 +196,13 @@ export const VerificationInput = ({ onVerify, isVerifying = false }: Verificatio
 
         <Button 
           onClick={handleVerify} 
-          className="w-full gap-2 h-12 text-base font-semibold"
+          className={`w-full gap-2 h-12 text-base font-semibold ${
+            isVerifying ? "animate-bounce-verify" : ""
+          }`}
           disabled={(!input.trim() && !imagePreview) || isVerifying}
         >
-          <Search className="h-5 w-5" />
-          {isVerifying ? "Verifying..." : "Verify Now"}
+          <Search className={`h-5 w-5 ${isVerifying ? "animate-spin" : ""}`} />
+          {isVerifying ? VERIFYING_MESSAGES[currentMessageIndex] : "Verify Now"}
         </Button>
       </div>
     </Card>
