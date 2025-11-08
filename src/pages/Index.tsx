@@ -4,54 +4,45 @@ import { VerificationInput } from "@/components/VerificationInput";
 import { CredibilityScore } from "@/components/CredibilityScore";
 import { VerificationReport } from "@/components/VerificationReport";
 import { CommunityFeedback } from "@/components/CommunityFeedback";
-import { Shield, Zap, Users, TrendingUp } from "lucide-react";
+import { Shield, Zap, Users } from "lucide-react";
 import { Card } from "@/components/ui/card";
-
-// Mock data for demonstration
-const mockVerificationData = {
-  score: 75,
-  level: 'mostly-true' as const,
-  title: 'Climate Change Impact on Global Temperature',
-  explanation: 'Our AI analysis, cross-referenced with 15 verified scientific sources, indicates this claim is largely accurate. The content aligns with peer-reviewed research from reputable institutions including NASA, NOAA, and the IPCC. While some specific statistics vary slightly across sources, the core claim is well-supported by scientific consensus.',
-  evidence: [
-    {
-      type: 'supporting' as const,
-      title: 'NASA Climate Study Confirms Rising Temperatures',
-      source: 'NASA Climate Research',
-      url: 'https://climate.nasa.gov',
-      excerpt: 'Multiple independent datasets show Earth\'s average surface temperature has risen approximately 1.1°C since pre-industrial times, consistent with the claim...',
-    },
-    {
-      type: 'supporting' as const,
-      title: 'IPCC Sixth Assessment Report',
-      source: 'Intergovernmental Panel on Climate Change',
-      url: 'https://ipcc.ch',
-      excerpt: 'The report confirms with high confidence that human activities have caused global warming of approximately 1.0°C above pre-industrial levels...',
-    },
-    {
-      type: 'neutral' as const,
-      title: 'Natural Climate Variability Research',
-      source: 'Journal of Climate Science',
-      url: 'https://journals.ametsoc.org',
-      excerpt: 'While natural variability exists, the study notes that observed warming cannot be explained by natural factors alone...',
-    },
-  ],
-  community: {
-    upvotes: 1247,
-    downvotes: 189,
-    comments: 342,
-  },
-};
+import { verifyContent, saveVerificationToHistory, type VerificationResult } from "@/lib/verificationService";
+import { toast } from "sonner";
 
 const Index = () => {
   const [showResults, setShowResults] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [verificationData, setVerificationData] = useState<VerificationResult | null>(null);
 
-  const handleVerify = (input: string, type: 'url' | 'text' | 'image') => {
-    console.log('Verifying:', type, input);
-    // Simulate API call
-    setTimeout(() => {
+  const handleVerify = async (input: string, type: 'url' | 'text' | 'image') => {
+    if (!input || (!input.trim() && type !== 'image')) {
+      toast.error("Please enter content to verify");
+      return;
+    }
+    
+    if (type === 'image' && !input.startsWith('data:image/')) {
+      toast.error("Please upload a valid image");
+      return;
+    }
+
+    setIsVerifying(true);
+    setShowResults(false);
+
+    try {
+      const result = await verifyContent(input, type);
+      setVerificationData(result);
+      saveVerificationToHistory(input, type, result);
       setShowResults(true);
-    }, 1000);
+      toast.success("Verification complete!", {
+        description: `Credibility score: ${result.score}%`,
+      });
+    } catch (error) {
+      toast.error("Verification failed", {
+        description: "Please try again later.",
+      });
+    } finally {
+      setIsVerifying(false);
+    }
   };
 
   return (
@@ -79,7 +70,7 @@ const Index = () => {
 
             {/* Verification Input */}
             <div className="mb-16">
-              <VerificationInput onVerify={handleVerify} />
+              <VerificationInput onVerify={handleVerify} isVerifying={isVerifying} />
             </div>
 
             {/* Features Grid */}
@@ -115,30 +106,34 @@ const Index = () => {
               </Card>
             </div>
           </>
-        ) : (
+        ) : verificationData ? (
           <>
             {/* Verification Results */}
             <div className="space-y-6">
               <CredibilityScore
-                score={mockVerificationData.score}
-                level={mockVerificationData.level}
-                title={mockVerificationData.title}
+                score={verificationData.score}
+                level={verificationData.level}
+                title={verificationData.title}
               />
 
               <VerificationReport
-                explanation={mockVerificationData.explanation}
-                evidence={mockVerificationData.evidence}
+                explanation={verificationData.explanation}
+                evidence={verificationData.evidence}
               />
 
               <CommunityFeedback
-                upvotes={mockVerificationData.community.upvotes}
-                downvotes={mockVerificationData.community.downvotes}
-                comments={mockVerificationData.community.comments}
+                upvotes={verificationData.community.upvotes}
+                downvotes={verificationData.community.downvotes}
+                comments={verificationData.community.comments}
+                verificationId={verificationData.title}
               />
 
               <div className="flex justify-center">
                 <button
-                  onClick={() => setShowResults(false)}
+                  onClick={() => {
+                    setShowResults(false);
+                    setVerificationData(null);
+                  }}
                   className="text-primary hover:underline font-medium"
                 >
                   ← Verify Another
@@ -146,7 +141,7 @@ const Index = () => {
               </div>
             </div>
           </>
-        )}
+        ) : null}
       </main>
 
       {/* Footer */}
