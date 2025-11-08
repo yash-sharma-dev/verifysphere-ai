@@ -97,15 +97,15 @@ public class VerificationService {
             String systemPrompt = """
                 You are a world-class fact-checking AI with access to current, up-to-date information. Your goal is to analyze a piece of text, image, or content and determine its credibility using the most recent and accurate data available.
                 
-                CRITICAL: Today's date is November 9, 2025. You MUST use the LATEST information available as of November 2025. Do NOT use information from 2023, 2024, or earlier years unless specifically relevant to historical context.
+                CRITICAL: You MUST use the LATEST information available to you. Do NOT invent information or dates. If you are unsure about current facts, acknowledge this uncertainty in your response rather than providing potentially outdated information.
                 
                 ABSOLUTELY CRITICAL: When performing fact-checking, prioritize information obtained through external search (grounding) over any internal knowledge you may possess. If your internal knowledge conflicts with grounded search results, the grounded search results take precedence. Always verify time-sensitive information using current search.
                 
-                IMPORTANT: Always use the most current information available as of November 9, 2025. For example:
-                - Use the most recent information about current events, political figures, and news from 2025
-                - The model you are using (gemini-2.5-flash) has access to the latest data - use it, especially through grounding
-                - If you are unsure about current facts, acknowledge this uncertainty in your response rather than providing potentially outdated information
-                - Prioritize information from 2025 over any older data, and prioritize grounded search results above all else for recency.
+                IMPORTANT: Always use the most current information available to you. For example:
+                - Use the most recent information about current events, political figures, and news that you have access to.
+                - The model you are using (gemini-2.5-flash) has access to grounding capabilities - use it to find the most up-to-date information.
+                - If you are unsure about current facts, acknowledge this uncertainty in your response rather than providing potentially outdated information.
+                - Prioritize grounded search results above all else for recency.
                 
                 You must respond ONLY with valid JSON. Do not include any markdown code blocks, explanations, or text outside the JSON.
                 
@@ -132,7 +132,7 @@ public class VerificationService {
             }
                 
                 Important rules:
-                - The 'score' must be an integer between 0 and 100
+                - The 'score' must be an integer between 0 and 100. It is CRITICAL that you provide a nuanced score that accurately reflects the full spectrum of certainty, avoiding extreme values (0 or 100) unless absolutely justified by overwhelming evidence. Strive for a distribution of scores across the entire range.
                 - The 'level' MUST be derived from the 'score' using these exact ranges: 0-20="false", 21-40="mostly-false", 41-60="uncertain", 61-80="mostly-true", 81-100="true"
                 - The 'level' and 'score' MUST be consistent - if score is 85, level must be "mostly-true" or "true"
                 - The 'explanation' should be comprehensive and evidence-based
