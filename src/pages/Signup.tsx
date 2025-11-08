@@ -43,9 +43,10 @@ const Signup = () => {
       
       if (success) {
         toast.success("Account created successfully!", {
-          description: "Welcome to FakeCheck!",
+          description: "Please verify your email to continue.",
         });
-        navigate("/");
+        // Redirect to OTP verification page with email
+        navigate(`/signup-verify?email=${encodeURIComponent(data.email)}`);
       } else {
         toast.error("Signup failed", {
           description: "An account with this email already exists.",
