@@ -38,6 +38,10 @@ public class GeminiApiClient {
     public String generateContent(String systemPrompt, String userPrompt, String imageDataUrl) {
         try {
             String url = String.format(GEMINI_API_URL, modelName, apiKey);
+            logger.info("Calling Gemini API with model: {}, API key: {}...{}", 
+                       modelName,
+                       apiKey != null && apiKey.length() > 8 ? apiKey.substring(0, 8) : "null",
+                       apiKey != null && apiKey.length() > 8 ? apiKey.substring(apiKey.length() - 4) : "");
             
             Map<String, Object> requestBody = new HashMap<>();
             

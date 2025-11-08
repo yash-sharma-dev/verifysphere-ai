@@ -35,10 +35,14 @@ public class VerificationService {
         }
         
         logger.info("Initializing Gemini API client with model: {}", modelName);
+        logger.info("Using API key: {}...{} (length: {})", 
+                   apiKey != null && apiKey.length() > 8 ? apiKey.substring(0, 8) : "null",
+                   apiKey != null && apiKey.length() > 8 ? apiKey.substring(apiKey.length() - 4) : "",
+                   apiKey != null ? apiKey.length() : 0);
         
         try {
             this.geminiClient = new GeminiApiClient(apiKey, modelName);
-            logger.info("Gemini API client initialized successfully");
+            logger.info("Gemini API client initialized successfully with direct Gemini API (not Vertex AI)");
         } catch (Exception e) {
             logger.error("Failed to initialize Gemini API client", e);
             throw new RuntimeException("Failed to initialize AI client: " + e.getMessage(), e);
@@ -91,7 +95,16 @@ public class VerificationService {
 
             // Prepare the system prompt
             String systemPrompt = """
-                You are a world-class fact-checking AI. Your goal is to analyze a piece of text, image, or content and determine its credibility.
+                You are a world-class fact-checking AI with access to current, up-to-date information. Your goal is to analyze a piece of text, image, or content and determine its credibility using the most recent and accurate data available.
+                
+                CRITICAL: Today's date is November 9, 2025. You MUST use the LATEST information available as of November 2025. Do NOT use information from 2023, 2024, or earlier years unless specifically relevant to historical context.
+                
+                IMPORTANT: Always use the most current information available as of November 9, 2025. For example:
+                - Use the most recent information about current events, political figures, and news from 2025
+                - The model you are using (gemini-2.5-flash) has access to the latest data - use it
+                - If you are unsure about current facts, acknowledge this uncertainty in your response rather than providing potentially outdated information
+                - Prioritize information from 2025 over any older data
+                
                 You must respond ONLY with valid JSON. Do not include any markdown code blocks, explanations, or text outside the JSON.
                 
                 The JSON object must conform to this exact structure:
@@ -123,6 +136,11 @@ public class VerificationService {
                 - The 'explanation' should be comprehensive and evidence-based
                 - The 'evidence' array should contain at least 2-3 pieces of evidence
                 - All evidence items must include all required fields: type, title, source, url, excerpt
+                - For the 'url' field in evidence: 
+                  * Use a valid HTTP or HTTPS URL if a source is available (e.g., "https://example.com/article")
+                  * Use "#" only if no source URL is available
+                  * URLs must start with "http://" or "https://"
+                  * Do not use relative URLs or invalid formats
                 - Return ONLY the JSON object, no markdown, no code blocks, no explanations
                 """;
 
@@ -212,7 +230,7 @@ public class VerificationService {
                            result.level(), score, level);
             }
             
-            // Validate evidence array structure
+            // Validate evidence array structure and normalize URLs
             List<VerificationResult.Evidence> validEvidence = new java.util.ArrayList<>();
             if (result.evidence() != null) {
                 for (VerificationResult.Evidence evidence : result.evidence()) {
@@ -222,7 +240,18 @@ public class VerificationService {
                         evidence.source() != null && !evidence.source().trim().isEmpty() &&
                         evidence.url() != null && !evidence.url().trim().isEmpty() &&
                         evidence.excerpt() != null && !evidence.excerpt().trim().isEmpty()) {
-                        validEvidence.add(evidence);
+                        
+                        // Normalize and validate URL
+                        String normalizedUrl = normalizeUrl(evidence.url());
+                        
+                        // Create evidence with normalized URL
+                        validEvidence.add(new VerificationResult.Evidence(
+                            evidence.type(),
+                            evidence.title(),
+                            evidence.source(),
+                            normalizedUrl,
+                            evidence.excerpt()
+                        ));
                     }
                 }
             }
@@ -264,6 +293,52 @@ public class VerificationService {
             return "mostly-true";
         } else {
             return "true";
+        }
+    }
+    
+    /**
+     * Normalizes and validates URLs from evidence.
+     * - Keeps "#" as-is (placeholder for no URL)
+     * - Adds http:// if URL is missing scheme
+     * - Validates URL format
+     * - Returns "#" for invalid URLs
+     */
+    private String normalizeUrl(String url) {
+        if (url == null || url.trim().isEmpty()) {
+            return "#";
+        }
+        
+        url = url.trim();
+        
+        // Keep "#" placeholder as-is
+        if ("#".equals(url)) {
+            return "#";
+        }
+        
+        // If URL doesn't start with http:// or https://, try to add it
+        if (!url.startsWith("http://") && !url.startsWith("https://")) {
+            // Check if it looks like a domain
+            if (url.contains(".") && !url.contains(" ")) {
+                url = "https://" + url;
+            } else {
+                // Doesn't look like a valid URL, return placeholder
+                logger.warn("Invalid URL format, using placeholder: {}", url);
+                return "#";
+            }
+        }
+        
+        // Validate URL format
+        try {
+            java.net.URI uri = new java.net.URI(url);
+            if (uri.getScheme() == null || (!uri.getScheme().equals("http") && !uri.getScheme().equals("https"))) {
+                logger.warn("Invalid URL scheme, using placeholder: {}", url);
+                return "#";
+            }
+            // Return normalized URL
+            return url;
+        } catch (java.net.URISyntaxException e) {
+            logger.warn("Invalid URL syntax, using placeholder: {} - {}", url, e.getMessage());
+            return "#";
         }
     }
 
