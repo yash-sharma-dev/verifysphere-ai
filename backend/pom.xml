@@ -40,29 +40,7 @@
 			<optional>true</optional>
 		</dependency>
 
-		<!-- LangChain4j -->
-        <dependency>
-            <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j</artifactId>
-            <version>${langchain4j.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j-vertex-ai</artifactId>
-            <version>${langchain4j.version}</version>
-        </dependency>
-
-        <!-- Explicit Google Cloud Dependencies for Vertex AI -->
-        <dependency>
-            <groupId>com.google.cloud</groupId>
-            <artifactId>google-cloud-aiplatform</artifactId>
-            <version>3.31.0</version>
-        </dependency>
-        <dependency>
-            <groupId>com.google.cloud</groupId>
-            <artifactId>google-cloud-core</artifactId>
-            <version>2.29.0</version>
-        </dependency>
+        <!-- LangChain4j (removed - using direct Gemini API client instead) -->
 
         <!-- JSoup for HTML parsing (URL content extraction) -->
         <dependency>

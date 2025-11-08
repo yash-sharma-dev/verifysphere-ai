@@ -2,12 +2,6 @@ package com.verifysphere.api.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.verifysphere.api.dto.VerificationResult;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.output.Response;
-import dev.langchain4j.model.vertexai.VertexAiChatModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -24,36 +18,24 @@ public class VerificationService {
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private static final Pattern JSON_PATTERN = Pattern.compile("\\{.*\\}", Pattern.DOTALL);
 
-    private final ChatLanguageModel model;
+    private final GeminiApiClient geminiClient;
     private final UrlContentExtractor urlContentExtractor;
 
     public VerificationService(
-            @Value("${vertex.ai.project-id}") String projectId,
-            @Value("${vertex.ai.location}") String location,
-            @Value("${vertex.ai.model-name}") String modelName,
+            @Value("${gemini.api-key}") String apiKey,
+            @Value("${gemini.model-name}") String modelName,
             UrlContentExtractor urlContentExtractor
     ) {
         this.urlContentExtractor = urlContentExtractor;
         
-        logger.info("Initializing Vertex AI model with project: {}, location: {}, model: {}", 
-                   projectId, location, modelName);
+        logger.info("Initializing Gemini API client with model: {}", modelName);
         
         try {
-            // Construct the endpoint URL for Vertex AI
-            String endpoint = String.format("%s-aiplatform.googleapis.com:443", location);
-            
-            this.model = VertexAiChatModel.builder()
-                    .project(projectId)
-                    .location(location)
-                    .endpoint(endpoint)
-                    .publisher("google")  // Publisher for Google models (Gemini)
-                    .modelName(modelName)
-                    .temperature(0.3)
-                    .build();
-            logger.info("Vertex AI model initialized successfully");
+            this.geminiClient = new GeminiApiClient(apiKey, modelName);
+            logger.info("Gemini API client initialized successfully");
         } catch (Exception e) {
-            logger.error("Failed to initialize Vertex AI model", e);
-            throw new RuntimeException("Failed to initialize AI model: " + e.getMessage(), e);
+            logger.error("Failed to initialize Gemini API client", e);
+            throw new RuntimeException("Failed to initialize AI client: " + e.getMessage(), e);
         }
     }
 
@@ -76,11 +58,11 @@ public class VerificationService {
                 You must respond ONLY with valid JSON. Do not include any markdown code blocks, explanations, or text outside the JSON.
                 
                 The JSON object must conform to this exact structure:
-                {
-                    "score": <an integer between 0 and 100 representing the credibility score>,
-                    "level": <a string, one of: "true", "mostly-true", "uncertain", "mostly-false", "false">,
-                    "title": <a short, descriptive title for the content being analyzed>,
-                    "explanation": <a detailed, neutral, and evidence-based explanation for your credibility assessment>,
+            {
+                "score": <an integer between 0 and 100 representing the credibility score>,
+                "level": <a string, one of: "true", "mostly-true", "uncertain", "mostly-false", "false">,
+                "title": <a short, descriptive title for the content being analyzed>,
+                "explanation": <a detailed, neutral, and evidence-based explanation for your credibility assessment>,
                     "evidence": [
                         {
                             "type": "supporting|contradicting|neutral",
@@ -95,7 +77,7 @@ public class VerificationService {
                         "downvotes": <integer, placeholder value like 0>,
                         "comments": <integer, placeholder value like 0>
                     }
-                }
+            }
                 
                 Important rules:
                 - The 'level' must be derived from the 'score': 0-20="false", 21-40="mostly-false", 41-60="uncertain", 61-80="mostly-true", 81-100="true"
@@ -113,16 +95,11 @@ public class VerificationService {
                     : contentToAnalyze
             );
 
-            logger.info("Sending request to AI model...");
+            logger.info("Sending request to Gemini API...");
             
-            // Send request to AI model
-            Response<AiMessage> response = model.generate(
-                new SystemMessage(systemPrompt),
-                new UserMessage(userPrompt)
-            );
-
-            String aiResponse = response.content().text();
-            logger.info("Received response from AI, length: {}", aiResponse.length());
+            // Send request to Gemini API
+            String aiResponse = geminiClient.generateContent(systemPrompt, userPrompt);
+            logger.info("Received response from Gemini API, length: {}", aiResponse.length());
 
             // Extract JSON from response (handle cases where AI wraps JSON in markdown)
             String jsonString = extractJsonFromResponse(aiResponse);
