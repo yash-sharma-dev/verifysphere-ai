@@ -52,6 +52,14 @@ const levelConfig = {
 export const CredibilityScore = ({ score, level, title }: CredibilityScoreProps) => {
   const config = levelConfig[level];
   const Icon = config.icon;
+  
+  // Ensure score is between 0 and 100
+  const clampedScore = Math.max(0, Math.min(100, score));
+  
+  // Debug logging (remove in production)
+  if (process.env.NODE_ENV === 'development') {
+    console.log('CredibilityScore - Raw score:', score, 'Clamped score:', clampedScore, 'Level:', level);
+  }
 
   return (
     <Card className={`w-full max-w-3xl mx-auto p-8 border-2 ${config.borderColor} shadow-lg`}>
@@ -71,9 +79,9 @@ export const CredibilityScore = ({ score, level, title }: CredibilityScoreProps)
         <div className="space-y-2">
           <div className="flex justify-between items-center text-sm">
             <span className="text-muted-foreground">Credibility Score</span>
-            <span className={`font-bold ${config.textColor}`}>{score}%</span>
+            <span className={`font-bold ${config.textColor}`}>{clampedScore}%</span>
           </div>
-          <Progress value={score} className="h-3" />
+          <Progress value={clampedScore} max={100} className="h-3" />
         </div>
 
         <div className="flex items-start gap-2 text-sm text-muted-foreground bg-muted p-3 rounded-lg">

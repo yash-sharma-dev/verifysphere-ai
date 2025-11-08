@@ -39,6 +39,11 @@ public class UrlContentExtractor {
         try {
             logger.info("Extracting content from URL: {}", url);
             
+            // Validate URL scheme before connecting
+            if (!isUrl(url)) {
+                throw new IllegalArgumentException("Invalid URL scheme. Only HTTP and HTTPS URLs are allowed.");
+            }
+            
             // Connect to URL and parse HTML
             Document doc = Jsoup.connect(url)
                     .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
@@ -64,10 +69,24 @@ public class UrlContentExtractor {
                 contentElement = doc.selectFirst("main");
             }
             if (contentElement == null) {
-                contentElement = doc.body();
+                Element body = doc.body();
+                if (body != null) {
+                    contentElement = body;
+                }
             }
 
-            String content = contentElement != null ? contentElement.text() : doc.body().text();
+            String content;
+            if (contentElement != null) {
+                content = contentElement.text();
+            } else {
+                Element body = doc.body();
+                if (body != null) {
+                    content = body.text();
+                } else {
+                    logger.warn("No body element found in document");
+                    content = doc.text(); // Fallback to entire document text
+                }
+            }
 
             // Combine title and content
             StringBuilder result = new StringBuilder();

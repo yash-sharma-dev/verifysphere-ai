@@ -24,19 +24,48 @@ public class VerifyController {
     @PostMapping("/verify")
     public ResponseEntity<?> verify(@RequestBody VerifyRequest request) {
         try {
+            // Validate request first before accessing fields
+            if (request == null) {
+                logger.warn("Received null request");
+                return ResponseEntity.badRequest()
+                    .body(new ErrorResponse("Request cannot be null"));
+            }
+
             logger.info("Received verification request for type: {}, input length: {}", 
-                       request.type(), 
+                       request.type() != null ? request.type() : "null", 
                        request.input() != null ? request.input().length() : 0);
 
-            // Validate request
-            if (request == null || request.input() == null || request.input().trim().isEmpty()) {
+            // Validate input - don't trim images as it could corrupt base64 data
+            boolean isImage = "image".equalsIgnoreCase(request.type());
+            if (request.input() == null || 
+                (isImage ? request.input().isEmpty() : request.input().trim().isEmpty())) {
                 return ResponseEntity.badRequest()
                     .body(new ErrorResponse("Input cannot be empty"));
             }
-
+            
             if (request.type() == null || request.type().trim().isEmpty()) {
                 return ResponseEntity.badRequest()
                     .body(new ErrorResponse("Type must be specified (url, text, or image)"));
+            }
+            
+            // Validate image type
+            if (isImage) {
+                String input = request.input();
+                if (!input.startsWith("data:image/")) {
+                    return ResponseEntity.badRequest()
+                        .body(new ErrorResponse("Invalid image format. Please upload a valid image file."));
+                }
+                // Check image size (base64 is ~33% larger than binary)
+                if (input.length() > 7000000) { // ~5MB base64 = ~3.75MB binary
+                    return ResponseEntity.badRequest()
+                        .body(new ErrorResponse("Image is too large. Maximum size is 5MB."));
+                }
+            } else {
+                // Validate text/URL input length to prevent DoS
+                if (request.input().length() > 100000) {
+                    return ResponseEntity.badRequest()
+                        .body(new ErrorResponse("Input is too long. Maximum length is 100,000 characters."));
+                }
             }
 
             // Process verification
@@ -53,8 +82,14 @@ public class VerifyController {
                 .body(new ErrorResponse(e.getMessage()));
         } catch (Exception e) {
             logger.error("Error processing verification request", e);
+            // Don't expose internal error details to client
+            String errorMessage = "An error occurred while processing your request. Please try again later.";
+            if (e.getMessage() != null && (e.getMessage().contains("URL") || e.getMessage().contains("input"))) {
+                // Only expose user-facing validation errors
+                errorMessage = e.getMessage();
+            }
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new ErrorResponse("Internal server error: " + e.getMessage()));
+                .body(new ErrorResponse(errorMessage));
         }
     }
 

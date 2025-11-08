@@ -28,6 +28,12 @@ public class VerificationService {
     ) {
         this.urlContentExtractor = urlContentExtractor;
         
+        // Validate API key is provided
+        if (apiKey == null || apiKey.trim().isEmpty()) {
+            logger.error("Gemini API key is not configured. Please set GEMINI_API_KEY environment variable.");
+            throw new RuntimeException("Gemini API key is required. Please set GEMINI_API_KEY environment variable.");
+        }
+        
         logger.info("Initializing Gemini API client with model: {}", modelName);
         
         try {
@@ -44,17 +50,48 @@ public class VerificationService {
                    input != null ? input.length() : 0);
 
         try {
-            // Extract content if input is a URL
+            // Handle different input types
             String contentToAnalyze = input;
-            if ("url".equalsIgnoreCase(type) && urlContentExtractor.isUrl(input)) {
+            String imageDataUrl = null;
+            
+            if ("image".equalsIgnoreCase(type)) {
+                // For images, validate and store the data URL
+                if (input == null || !input.startsWith("data:image/")) {
+                    logger.warn("Invalid image format provided");
+                    return createErrorResult("Invalid image format. Please upload a valid image file.");
+                }
+                imageDataUrl = input;
+                contentToAnalyze = "Analyze this image for credibility. Check for: 1) Signs of manipulation or editing, 2) Any text or claims visible in the image, 3) Context and authenticity of the visual content, 4) Whether the image appears to be misleading or misrepresenting information. Provide a credibility score based on your analysis.";
+                logger.info("Processing image verification request");
+            } else if ("url".equalsIgnoreCase(type)) {
+                // Check if input is a valid URL
+                if (!urlContentExtractor.isUrl(input)) {
+                    logger.warn("Invalid URL format: {}", input);
+                    return createErrorResult("Invalid URL format. Please provide a valid HTTP or HTTPS URL.");
+                }
                 logger.info("Input is a URL, extracting content...");
-                contentToAnalyze = urlContentExtractor.extractContentFromUrl(input);
-                logger.info("Content extracted, length: {}", contentToAnalyze.length());
+                try {
+                    contentToAnalyze = urlContentExtractor.extractContentFromUrl(input);
+                    if (contentToAnalyze == null || contentToAnalyze.trim().isEmpty()) {
+                        logger.warn("URL content extraction returned empty result");
+                        return createErrorResult("Failed to extract content from URL. The URL may be inaccessible or contain no readable content.");
+                    }
+                    logger.info("Content extracted, length: {}", contentToAnalyze.length());
+                } catch (Exception e) {
+                    logger.error("Error extracting URL content: {}", e.getMessage());
+                    return createErrorResult("Failed to extract content from URL: " + e.getMessage());
+                }
+            }
+            
+            // Validate input length to prevent DoS (only for text/URL, not images)
+            if (imageDataUrl == null && contentToAnalyze != null && contentToAnalyze.length() > 100000) {
+                logger.warn("Input content too long: {} characters, truncating", contentToAnalyze.length());
+                contentToAnalyze = contentToAnalyze.substring(0, 100000) + "\n\n[Content truncated due to length]";
             }
 
             // Prepare the system prompt
             String systemPrompt = """
-                You are a world-class fact-checking AI. Your goal is to analyze a piece of text or content and determine its credibility.
+                You are a world-class fact-checking AI. Your goal is to analyze a piece of text, image, or content and determine its credibility.
                 You must respond ONLY with valid JSON. Do not include any markdown code blocks, explanations, or text outside the JSON.
                 
                 The JSON object must conform to this exact structure:
@@ -80,7 +117,9 @@ public class VerificationService {
             }
                 
                 Important rules:
-                - The 'level' must be derived from the 'score': 0-20="false", 21-40="mostly-false", 41-60="uncertain", 61-80="mostly-true", 81-100="true"
+                - The 'score' must be an integer between 0 and 100
+                - The 'level' MUST be derived from the 'score' using these exact ranges: 0-20="false", 21-40="mostly-false", 41-60="uncertain", 61-80="mostly-true", 81-100="true"
+                - The 'level' and 'score' MUST be consistent - if score is 85, level must be "mostly-true" or "true"
                 - The 'explanation' should be comprehensive and evidence-based
                 - The 'evidence' array should contain at least 2-3 pieces of evidence
                 - All evidence items must include all required fields: type, title, source, url, excerpt
@@ -88,17 +127,30 @@ public class VerificationService {
                 """;
 
             // Prepare the user message
+            // Use proper UTF-8 character boundary for truncation to avoid breaking multi-byte characters
+            if (contentToAnalyze == null) {
+                logger.error("Content to analyze is null");
+                return createErrorResult("Invalid content provided for verification");
+            }
+            
+            String contentForPrompt = contentToAnalyze;
+            if (imageDataUrl == null && contentToAnalyze.length() > 4000) {
+                // Find the last complete character before 4000 chars
+                int truncateAt = 4000;
+                while (truncateAt > 0 && Character.isHighSurrogate(contentToAnalyze.charAt(truncateAt - 1))) {
+                    truncateAt--;
+                }
+                contentForPrompt = contentToAnalyze.substring(0, truncateAt) + "\n\n[Content truncated for analysis]";
+            }
             String userPrompt = String.format(
                 "Please analyze the following content for credibility:\n\n%s",
-                contentToAnalyze.length() > 4000 
-                    ? contentToAnalyze.substring(0, 4000) + "\n\n[Content truncated for analysis]"
-                    : contentToAnalyze
+                contentForPrompt
             );
 
             logger.info("Sending request to Gemini API...");
             
-            // Send request to Gemini API
-            String aiResponse = geminiClient.generateContent(systemPrompt, userPrompt);
+            // Send request to Gemini API (with image if provided)
+            String aiResponse = geminiClient.generateContent(systemPrompt, userPrompt, imageDataUrl);
             logger.info("Received response from Gemini API, length: {}", aiResponse.length());
 
             // Extract JSON from response (handle cases where AI wraps JSON in markdown)
@@ -122,6 +174,10 @@ public class VerificationService {
     }
 
     private String extractJsonFromResponse(String response) {
+        if (response == null || response.trim().isEmpty()) {
+            throw new RuntimeException("Empty response from AI model");
+        }
+        
         // Try to find JSON in the response
         Matcher matcher = JSON_PATTERN.matcher(response);
         if (matcher.find()) {
@@ -135,16 +191,79 @@ public class VerificationService {
             return codeBlockMatcher.group(1).trim();
         }
         
-        // If still no JSON, return the response as-is and hope it's valid JSON
-        return response.trim();
+        // If still no JSON found, throw error instead of hoping
+        logger.error("Could not extract JSON from AI response. Response: {}", response);
+        throw new RuntimeException("AI response does not contain valid JSON. Please try again.");
     }
 
     private VerificationResult parseJsonResponse(String jsonString) {
         try {
-            return objectMapper.readValue(jsonString, VerificationResult.class);
+            VerificationResult result = objectMapper.readValue(jsonString, VerificationResult.class);
+            
+            // Ensure score is within valid range
+            int score = Math.max(0, Math.min(100, result.score()));
+            
+            // Derive level from score to ensure accuracy
+            String level = deriveLevelFromScore(score);
+            
+            // If the AI-provided level doesn't match the score, use the derived level
+            if (!level.equals(result.level())) {
+                logger.warn("Level mismatch detected: AI provided level '{}' for score {}, correcting to '{}'", 
+                           result.level(), score, level);
+            }
+            
+            // Validate evidence array structure
+            List<VerificationResult.Evidence> validEvidence = new java.util.ArrayList<>();
+            if (result.evidence() != null) {
+                for (VerificationResult.Evidence evidence : result.evidence()) {
+                    if (evidence != null && 
+                        evidence.type() != null && !evidence.type().trim().isEmpty() &&
+                        evidence.title() != null && !evidence.title().trim().isEmpty() &&
+                        evidence.source() != null && !evidence.source().trim().isEmpty() &&
+                        evidence.url() != null && !evidence.url().trim().isEmpty() &&
+                        evidence.excerpt() != null && !evidence.excerpt().trim().isEmpty()) {
+                        validEvidence.add(evidence);
+                    }
+                }
+            }
+            
+            // If no valid evidence, add a default one
+            if (validEvidence.isEmpty()) {
+                validEvidence.add(new VerificationResult.Evidence(
+                    "neutral",
+                    "Analysis completed",
+                    "AI Analysis",
+                    "#",
+                    "Content was analyzed using AI-powered fact-checking."
+                ));
+            }
+            
+            // Return corrected result with synchronized score and level
+            return new VerificationResult(
+                score,
+                level,
+                result.title() != null ? result.title() : "Credibility Analysis",
+                result.explanation() != null ? result.explanation() : "Analysis completed.",
+                validEvidence,
+                result.community() != null ? result.community() : new VerificationResult.CommunityData(0, 0, 0)
+            );
         } catch (Exception e) {
             logger.error("Failed to parse JSON response: {}", jsonString, e);
             throw new RuntimeException("Failed to parse AI response: " + e.getMessage(), e);
+        }
+    }
+    
+    private String deriveLevelFromScore(int score) {
+        if (score <= 20) {
+            return "false";
+        } else if (score <= 40) {
+            return "mostly-false";
+        } else if (score <= 60) {
+            return "uncertain";
+        } else if (score <= 80) {
+            return "mostly-true";
+        } else {
+            return "true";
         }
     }
 

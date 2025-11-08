@@ -40,8 +40,9 @@ export const verifyContent = async (
   try {
     // For images, we'll send the base64 data URL to the backend
     // The backend can process it or return a default response
+    // Don't trim image data URLs as they contain base64 data
     const requestBody: VerifyRequest = {
-      input: input.trim(),
+      input: type === 'image' ? input : input.trim(),
       type: type,
     };
 
@@ -62,8 +63,9 @@ export const verifyContent = async (
 
     const result: VerificationResult = await response.json();
     
-    // Validate the result structure
-    if (!result.score || !result.level || !result.title || !result.explanation) {
+    // Validate the result structure (score can be 0, so check for undefined/null)
+    if (result.score === undefined || result.score === null || 
+        !result.level || !result.title || !result.explanation) {
       throw new Error('Invalid response format from server');
     }
 
