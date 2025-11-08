@@ -52,10 +52,10 @@ const DashboardPage: React.FC = () => {
                   <Shield className="w-6 h-6 text-primary flex-shrink-0 mt-1" />
                   <div>
                     <h3 className="font-semibold text-foreground mb-2">
-                      Welcome to FakeCheck
+                      Welcome to VerifySphere
                     </h3>
                     <p className="text-sm text-muted-foreground mb-3">
-                      You can now access all features of FakeCheck, including AI-powered news verification, 
+                      You can now access all features of VerifySphere, including AI-powered news verification, 
                       source credibility analysis, and community-driven fact-checking.
                     </p>
                     {email && (

@@ -1,5 +1,5 @@
 /**
- * Mock OTP Service for FakeCheck
+ * Mock OTP Service for VerifySphere
  * 
  * This is a frontend-only mock service that simulates OTP verification.
  * In production, replace this with actual API calls to your backend.
@@ -83,8 +83,8 @@ export const sendOtp = async (email: string): Promise<{ success: boolean; cooldo
     });
   }
 
-  console.log(`[FakeCheck Mock OTP Service] OTP for ${normalizedEmail}: ${otp}`);
-  console.log(`[FakeCheck Mock OTP Service] OTP expires at: ${new Date(expiresAt).toLocaleString()}`);
+  console.log(`[VerifySphere Mock OTP Service] OTP for ${normalizedEmail}: ${otp}`);
+  console.log(`[VerifySphere Mock OTP Service] OTP expires at: ${new Date(expiresAt).toLocaleString()}`);
 
   return { success: true };
 };

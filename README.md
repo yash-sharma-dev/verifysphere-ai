@@ -1,8 +1,8 @@
-# FakeCheck - AI-Powered Fake News Detection & Verification
+# VerifySphere - AI-Powered Fake News Detection & Verification
 
-FakeCheck is a modern web application designed to help users verify news credibility using AI-powered analysis, trusted sources, and community consensus. Built with React, TypeScript, and a comprehensive UI component library.
+VerifySphere is a modern web application designed to help users verify news credibility using AI-powered analysis, trusted sources, and community consensus. Built with React, TypeScript, and a comprehensive UI component library.
 
-![FakeCheck](https://img.shields.io/badge/FakeCheck-AI%20Verification-blue)
+![VerifySphere](https://img.shields.io/badge/VerifySphere-AI%20Verification-blue)
 ![React](https://img.shields.io/badge/React-18.3.1-61DAFB?logo=react)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.8.3-3178C6?logo=typescript)
 ![Vite](https://img.shields.io/badge/Vite-5.4.19-646CFF?logo=vite)
@@ -258,4 +258,4 @@ This project is private and proprietary.
 
 ---
 
-**FakeCheck** - Fight misinformation with AI-powered verification 🔍
+**VerifySphere** - Fight misinformation with AI-powered verification 🔍

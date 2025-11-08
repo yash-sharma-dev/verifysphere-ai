@@ -66,7 +66,7 @@ const Login = () => {
               </div>
               <CardTitle className="text-2xl font-bold">Welcome back</CardTitle>
               <CardDescription>
-                Sign in to your FakeCheck account
+                Sign in to your VerifySphere account
               </CardDescription>
             </CardHeader>
             <CardContent>
