@@ -32,6 +32,7 @@ public class GeminiApiClient {
     }
 
     public String generateContent(String systemPrompt, String userPrompt) {
+	logger.info("System prompt {} & userPrompt: {}", systemPrompt, userPrompt);
         return generateContent(systemPrompt, userPrompt, null);
     }
 
