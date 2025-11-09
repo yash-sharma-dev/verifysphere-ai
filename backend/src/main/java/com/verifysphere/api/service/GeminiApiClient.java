@@ -37,6 +37,9 @@ public class GeminiApiClient {
 
     public String generateContent(String systemPrompt, String userPrompt, String imageDataUrl) {
         try {
+            logger.info("System prompt: {}", systemPrompt);
+            logger.info("User prompt: {}", userPrompt);
+            
             String url = String.format(GEMINI_API_URL, modelName, apiKey);
             logger.info("Calling Gemini API with model: {}, API key: {}...{}", 
                        modelName,
@@ -158,7 +161,9 @@ public class GeminiApiClient {
                 throw new RuntimeException("No text in Gemini API response");
             }
 
-            return text.asText();
+            String result = text.asText();
+            logger.info("Gemini API result: {}", result);
+            return result;
 
         } catch (Exception e) {
             logger.error("Error calling Gemini API", e);
@@ -166,4 +171,3 @@ public class GeminiApiClient {
         }
     }
 }
-
