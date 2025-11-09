@@ -1,5 +1,7 @@
 # VerifySphere - AI-Powered Fake News Detection & Verification
 
+https://verifysphere-ai.vercel.app/ (Web App Link)
+
 VerifySphere is a modern web application designed to help users verify news credibility using AI-powered analysis, trusted sources, and community consensus. Built with React, TypeScript, and a comprehensive UI component library.
 
 ![VerifySphere](https://img.shields.io/badge/VerifySphere-AI%20Verification-blue)
