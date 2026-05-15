@@ -6,14 +6,8 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - spring.datasource.url=jdbc:postgresql://db:5432/verifysphere
-      - spring.datasource.username=verifysphere
-      - spring.datasource.password=verifysphere
-      # IMPORTANT: This API key is for development only. 
-      # For production, set this in a secure way (e.g., environment variables in your deployment environment).
-      - GEMINI_API_KEY=AIzaSyCCDcyj0pKyPoxzJou8YoyrF0FyLJNgZYM
-    depends_on:
-      - db
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - TAVILY_API_KEY=${TAVILY_API_KEY}
     restart: unless-stopped
 
   frontend:
@@ -25,18 +19,3 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
-
-  db:
-    image: postgres:14-alpine
-    environment:
-      - POSTGRES_DB=verifysphere
-      - POSTGRES_USER=verifysphere
-      - POSTGRES_PASSWORD=verifysphere
-    ports:
-      - "5433:5432"
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
-    restart: unless-stopped
-
-volumes:
-  postgres-data:
