@@ -1,9 +1,0 @@
-/home/zbone/projects/verifysphere-ai/backend/src/main/java/com/verifysphere/api/ApiApplication.java
-/home/zbone/projects/verifysphere-ai/backend/src/main/java/com/verifysphere/api/config/WebConfig.java
-/home/zbone/projects/verifysphere-ai/backend/src/main/java/com/verifysphere/api/controller/HealthCheckController.java
-/home/zbone/projects/verifysphere-ai/backend/src/main/java/com/verifysphere/api/controller/VerifyController.java
-/home/zbone/projects/verifysphere-ai/backend/src/main/java/com/verifysphere/api/dto/VerificationResult.java
-/home/zbone/projects/verifysphere-ai/backend/src/main/java/com/verifysphere/api/dto/VerifyRequest.java
-/home/zbone/projects/verifysphere-ai/backend/src/main/java/com/verifysphere/api/service/GeminiApiClient.java
-/home/zbone/projects/verifysphere-ai/backend/src/main/java/com/verifysphere/api/service/UrlContentExtractor.java
-/home/zbone/projects/verifysphere-ai/backend/src/main/java/com/verifysphere/api/service/VerificationService.java
