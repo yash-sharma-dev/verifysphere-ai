@@ -1,3 +1,4 @@
+import { supabase } from "@/lib/supabase";
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
 type CredibilityLevel = 'true' | 'mostly-true' | 'uncertain' | 'mostly-false' | 'false';
@@ -86,23 +87,83 @@ export const verifyContent = async (
 };
 
 // Store verification in history
-export const saveVerificationToHistory = (input: string, type: 'url' | 'text' | 'image', result: VerificationResult) => {
-  const history = JSON.parse(localStorage.getItem("verificationHistory") || "[]");
-  const entry = {
-    id: Date.now().toString(),
-    input,
-    type,
-    result,
-    timestamp: new Date().toISOString(),
-  };
-  history.unshift(entry);
-  // Keep only last 50 verifications
-  const limitedHistory = history.slice(0, 50);
-  localStorage.setItem("verificationHistory", JSON.stringify(limitedHistory));
+export const saveVerificationToHistory = async (
+  input: string,
+  type: 'url' | 'text' | 'image',
+  result: VerificationResult
+) => {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return;
+
+  const { error } = await supabase
+    .from("verification_history")
+    .insert({
+      user_id: user.id,
+      input_text: input,
+      verification_type: type,
+      score: result.score,
+      level: result.level,
+      title: result.title,
+    });
+
+  if (error) {
+    console.error("Error saving history:", error);
+  }
 };
 
 // Get verification history
-export const getVerificationHistory = () => {
-  return JSON.parse(localStorage.getItem("verificationHistory") || "[]");
+export const getVerificationHistory = async () => {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return [];
+
+  const { data, error } = await supabase
+    .from("verification_history")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching history:", error);
+    return [];
+  }
+
+  return data;
 };
+
+
+export const deleteHistoryEntry = async (id: string) => {
+  const { error } = await supabase
+    .from("verification_history")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    console.error("Error deleting history:", error);
+  }
+};
+
+
+export const clearHistory = async () => {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return;
+
+  const { error } = await supabase
+    .from("verification_history")
+    .delete()
+    .eq("user_id", user.id);
+
+  if (error) {
+    console.error("Error clearing history:", error);
+  }
+};
+
 
