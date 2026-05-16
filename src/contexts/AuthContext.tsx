@@ -31,8 +31,9 @@ export const AuthProvider = ({
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    // Get current session including tokens from OAuth redirect URL hash
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         setUser({
           id: session.user.id,
@@ -41,24 +42,6 @@ export const AuthProvider = ({
             session.user.email ||
             "User",
           email: session.user.email || "",
-        });
-      }
-    });
-
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      const currentUser = session?.user;
-
-      if (currentUser) {
-        setUser({
-          id: currentUser.id,
-          name:
-            currentUser.user_metadata.full_name ||
-            currentUser.email ||
-            "User",
-          email: currentUser.email || "",
         });
       } else {
         setUser(null);
