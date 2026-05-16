@@ -34,4 +34,4 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 # Expose port 80 for the web server
 EXPOSE 80
 
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["/bin/sh", "-c", "NAMESERVER=$(cat /etc/resolv.conf | grep ^nameserver | awk '{print $2}' | head -1) && sed -i \"s/NAMESERVER/$NAMESERVER/\" /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"]
