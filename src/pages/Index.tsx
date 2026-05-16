@@ -1,5 +1,5 @@
-    import { useState, useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { VerificationInput } from "@/components/VerificationInput";
 import { CredibilityScore } from "@/components/CredibilityScore";
@@ -7,20 +7,31 @@ import { VerificationReport } from "@/components/VerificationReport";
 import { CommunityFeedback } from "@/components/CommunityFeedback";
 import { Shield, Zap, Users } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import { verifyContent, saveVerificationToHistory, type VerificationResult } from "@/lib/verificationService";
+
+import {
+  verifyContent,
+  saveVerificationToHistory,
+  type VerificationResult,
+} from "@/lib/verificationService";
+
+import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 
 const Index = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+
   const [showResults, setShowResults] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
-  const [verificationData, setVerificationData] = useState<VerificationResult | null>(null);
 
-  // Reset verification results when navigating to home page
+  const [verificationData, setVerificationData] =
+    useState<VerificationResult | null>(null);
+
+  // Reset verification results when navigating home
   useEffect(() => {
-    // Reset state when location changes to home page or when reset state is present
     if (location.pathname === "/") {
       const resetState = (location.state as { reset?: number })?.reset;
+
       if (resetState) {
         setShowResults(false);
         setVerificationData(null);
@@ -28,15 +39,44 @@ const Index = () => {
     }
   }, [location.pathname, location.state]);
 
-  const handleVerify = async (input: string, type: 'url' | 'text' | 'image') => {
-    if (!input || (!input.trim() && type !== 'image')) {
+  const handleVerify = async (
+    input: string,
+    type: "url" | "text" | "image"
+  ) => {
+    // Validation
+    if (!input || (!input.trim() && type !== "image")) {
       toast.error("Please enter content to verify");
       return;
     }
-    
-    if (type === 'image' && !input.startsWith('data:image/')) {
+
+    if (type === "image" && !input.startsWith("data:image/")) {
       toast.error("Please upload a valid image");
       return;
+    }
+
+    // CHECK AUTH STATUS
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    // GUEST USER LIMIT
+    if (!user) {
+      const guestVerificationUsed = localStorage.getItem(
+        "guestVerificationUsed"
+      );
+
+      if (guestVerificationUsed === "true") {
+        toast.error("Login required", {
+          description:
+            "Please continue with Google to verify more content.",
+        });
+
+        navigate("/login");
+        return;
+      }
+
+      // Allow one free verification
+      localStorage.setItem("guestVerificationUsed", "true");
     }
 
     setIsVerifying(true);
@@ -44,23 +84,44 @@ const Index = () => {
 
     try {
       const result = await verifyContent(input, type);
-      // Ensure score is a number
+
+      // Normalize score
       const normalizedResult = {
         ...result,
-        score: typeof result.score === 'number' ? result.score : parseInt(result.score, 10) || 0
+        score:
+          typeof result.score === "number"
+            ? result.score
+            : parseInt(result.score as any, 10) || 0,
       };
-      console.log('Verification result:', normalizedResult);
+
+      console.log("Verification result:", normalizedResult);
+
       setVerificationData(normalizedResult);
-      saveVerificationToHistory(input, type, normalizedResult);
+
+      // Save history only for logged in users
+      if (user) {
+        await saveVerificationToHistory(
+          input,
+          type,
+          normalizedResult
+        );
+      }
+
       setShowResults(true);
+
       toast.success("Verification complete!", {
         description: `Credibility score: ${normalizedResult.score}%`,
       });
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "An unexpected error occurred";
+
       toast.error("Verification failed", {
         description: errorMessage,
       });
+
       console.error("Verification error:", error);
     } finally {
       setIsVerifying(false);
@@ -70,7 +131,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      
+
       <main className="container mx-auto px-4 py-12">
         {!showResults ? (
           <>
@@ -80,19 +141,25 @@ const Index = () => {
                 <Shield className="h-4 w-4" />
                 AI-Powered News Verification
               </div>
+
               <h1 className="text-5xl md:text-6xl font-bold text-foreground mb-4">
                 Fight Misinformation with{" "}
                 <span className="text-primary">VerifySphere</span>
               </h1>
+
               <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-                Verify news credibility in seconds using advanced AI, trusted sources, 
-                and community consensus. Make informed decisions with confidence.
+                Verify news credibility in seconds using advanced AI,
+                trusted sources, and community consensus. Make informed
+                decisions with confidence.
               </p>
             </div>
 
             {/* Verification Input */}
             <div className="mb-16">
-              <VerificationInput onVerify={handleVerify} isVerifying={isVerifying} />
+              <VerificationInput
+                onVerify={handleVerify}
+                isVerifying={isVerifying}
+              />
             </div>
 
             {/* Features Grid */}
@@ -101,9 +168,14 @@ const Index = () => {
                 <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
                   <Zap className="h-6 w-6 text-primary" />
                 </div>
-                <h3 className="font-semibold text-foreground">Instant Analysis</h3>
+
+                <h3 className="font-semibold text-foreground">
+                  Instant Analysis
+                </h3>
+
                 <p className="text-sm text-muted-foreground">
-                  Get credibility scores in seconds using advanced AI and machine learning
+                  Get credibility scores in seconds using advanced AI and
+                  machine learning
                 </p>
               </Card>
 
@@ -111,9 +183,14 @@ const Index = () => {
                 <div className="w-12 h-12 bg-secondary/10 rounded-full flex items-center justify-center mx-auto">
                   <Shield className="h-6 w-6 text-secondary" />
                 </div>
-                <h3 className="font-semibold text-foreground">Trusted Sources</h3>
+
+                <h3 className="font-semibold text-foreground">
+                  Trusted Sources
+                </h3>
+
                 <p className="text-sm text-muted-foreground">
-                  Cross-referenced with verified news outlets and fact-checking databases
+                  Cross-referenced with verified news outlets and
+                  fact-checking databases
                 </p>
               </Card>
 
@@ -121,9 +198,14 @@ const Index = () => {
                 <div className="w-12 h-12 bg-accent/10 rounded-full flex items-center justify-center mx-auto">
                   <Users className="h-6 w-6 text-accent" />
                 </div>
-                <h3 className="font-semibold text-foreground">Community Driven</h3>
+
+                <h3 className="font-semibold text-foreground">
+                  Community Driven
+                </h3>
+
                 <p className="text-sm text-muted-foreground">
-                  Benefit from collective intelligence and community-verified information
+                  Benefit from collective intelligence and
+                  community-verified information
                 </p>
               </Card>
             </div>
@@ -170,11 +252,32 @@ const Index = () => {
       <footer className="border-t border-border mt-20">
         <div className="container mx-auto px-4 py-8">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground">
-            <p>© 2024 VerifySphere. Fighting misinformation through technology and community.</p>
+            <p>
+              © 2024 VerifySphere. Fighting misinformation through
+              technology and community.
+            </p>
+
             <div className="flex gap-6">
-              <a href="#" className="hover:text-foreground transition-colors">About</a>
-              <a href="#" className="hover:text-foreground transition-colors">Privacy</a>
-              <a href="#" className="hover:text-foreground transition-colors">Terms</a>
+              <a
+                href="#"
+                className="hover:text-foreground transition-colors"
+              >
+                About
+              </a>
+
+              <a
+                href="#"
+                className="hover:text-foreground transition-colors"
+              >
+                Privacy
+              </a>
+
+              <a
+                href="#"
+                className="hover:text-foreground transition-colors"
+              >
+                Terms
+              </a>
             </div>
           </div>
         </div>
