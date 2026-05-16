@@ -1,4 +1,12 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  ReactNode,
+} from "react";
+
+import { supabase } from "@/lib/supabase";
 
 interface User {
   id: string;
@@ -8,80 +16,76 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => Promise<boolean>;
-  signup: (name: string, email: string, password: string) => Promise<boolean>;
-  logout: () => void;
+  loginWithGoogle: () => Promise<void>;
+  logout: () => Promise<void>;
   isAuthenticated: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider = ({ children }: { children: ReactNode }) => {
+export const AuthProvider = ({
+  children,
+}: {
+  children: ReactNode;
+}) => {
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    // Load user from localStorage on mount
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (e) {
-        localStorage.removeItem("user");
+    // Get current session user
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user) {
+        setUser({
+          id: data.user.id,
+          name:
+            data.user.user_metadata.full_name ||
+            data.user.email ||
+            "User",
+          email: data.user.email || "",
+        });
       }
-    }
+    });
+
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      const currentUser = session?.user;
+
+      if (currentUser) {
+        setUser({
+          id: currentUser.id,
+          name:
+            currentUser.user_metadata.full_name ||
+            currentUser.email ||
+            "User",
+          email: currentUser.email || "",
+        });
+      } else {
+        setUser(null);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
-    // Check if user exists in localStorage
-    const users = JSON.parse(localStorage.getItem("users") || "[]");
-    const foundUser = users.find(
-      (u: User & { password: string }) => u.email === email && u.password === password
-    );
-
-    if (foundUser) {
-      const { password: _, ...userWithoutPassword } = foundUser;
-      setUser(userWithoutPassword);
-      localStorage.setItem("user", JSON.stringify(userWithoutPassword));
-      return true;
-    }
-    return false;
+  const loginWithGoogle = async () => {
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+    });
   };
 
-  const signup = async (name: string, email: string, password: string): Promise<boolean> => {
-    // Check if user already exists
-    const users = JSON.parse(localStorage.getItem("users") || "[]");
-    if (users.some((u: User & { password: string }) => u.email === email)) {
-      return false;
-    }
-
-    // Create new user
-    const newUser: User & { password: string } = {
-      id: Date.now().toString(),
-      name,
-      email,
-      password, // In production, this should be hashed
-    };
-
-    users.push(newUser);
-    localStorage.setItem("users", JSON.stringify(users));
-
-    const { password: _, ...userWithoutPassword } = newUser;
-    setUser(userWithoutPassword);
-    localStorage.setItem("user", JSON.stringify(userWithoutPassword));
-    return true;
-  };
-
-  const logout = () => {
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
-    localStorage.removeItem("user");
   };
 
   return (
     <AuthContext.Provider
       value={{
         user,
-        login,
-        signup,
+        loginWithGoogle,
         logout,
         isAuthenticated: !!user,
       }}
@@ -93,10 +97,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
+
+  if (!context) {
+    throw new Error("useAuth must be used within AuthProvider");
   }
+
   return context;
 };
-
-
