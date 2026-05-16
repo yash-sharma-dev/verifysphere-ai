@@ -4,6 +4,7 @@ import "./index.css";
 import { supabase } from "@/lib/supabase";
 
 async function bootstrap() {
+  console.log("[auth] URL:", window.location.href);
   const hash = window.location.hash.substring(1);
   const params = new URLSearchParams(hash);
   const accessToken = params.get("access_token");
