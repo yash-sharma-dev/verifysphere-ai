@@ -69,12 +69,7 @@ export const Header = () => {
                   <span className="hidden sm:inline">Sign In</span>
                 </Link>
               </Button>
-              <Button variant="ghost" size="sm" className="gap-2" asChild>
-                <Link to="/signup">
-                  <User className="h-4 w-4" />
-                  <span className="hidden sm:inline">Sign Up</span>
-                </Link>
-              </Button>
+
             </>
           )}
         </nav>

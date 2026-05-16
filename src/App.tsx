@@ -7,8 +7,6 @@ import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/contexts/AuthContext";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
-import Signup from "./pages/Signup";
-import SignupVerify from "./pages/SignupVerify";
 import Login from "./pages/Login";
 import History from "./pages/History";
 import Verify from "./pages/Verify";
@@ -27,8 +25,6 @@ const App = () => (
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<Index />} />
-              <Route path="/signup" element={<Signup />} />
-              <Route path="/signup-verify" element={<SignupVerify />} />
               <Route path="/login" element={<Login />} />
               <Route path="/history" element={<History />} />
               <Route path="/verify" element={<Verify />} />
