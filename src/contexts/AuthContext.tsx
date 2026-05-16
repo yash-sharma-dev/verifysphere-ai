@@ -31,16 +31,16 @@ export const AuthProvider = ({
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    // Get current session user
-    supabase.auth.getUser().then(({ data }) => {
-      if (data.user) {
+    // Get current session including tokens from OAuth redirect URL hash
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
         setUser({
-          id: data.user.id,
+          id: session.user.id,
           name:
-            data.user.user_metadata.full_name ||
-            data.user.email ||
+            session.user.user_metadata.full_name ||
+            session.user.email ||
             "User",
-          email: data.user.email || "",
+          email: session.user.email || "",
         });
       }
     });
