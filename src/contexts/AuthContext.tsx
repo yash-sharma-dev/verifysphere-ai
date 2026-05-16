@@ -63,10 +63,11 @@ export const AuthProvider = ({
   }, []);
 
   const loginWithGoogle = async () => {
+    const base = import.meta.env.VITE_APP_URL || window.location.origin;
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: `${base}/auth/callback`,
       },
     });
   };
