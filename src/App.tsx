@@ -7,11 +7,7 @@ import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/contexts/AuthContext";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
-import Login from "./pages/Login";
 import History from "./pages/History";
-import Verify from "./pages/Verify";
-import Resend from "./pages/Resend";
-import Dashboard from "./pages/Dashboard";
 import AuthCallback from "./pages/AuthCallback";
 
 const queryClient = new QueryClient();
@@ -26,13 +22,8 @@ const App = () => (
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<Index />} />
-              <Route path="/login" element={<Login />} />
               <Route path="/history" element={<History />} />
-              <Route path="/verify" element={<Verify />} />
-              <Route path="/resend" element={<Resend />} />
-              <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/auth/callback" element={<AuthCallback />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

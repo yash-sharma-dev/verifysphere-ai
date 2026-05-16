@@ -1,4 +1,4 @@
-import { Shield, History, User, LogOut } from "lucide-react";
+import { Shield, History, LogOut } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -14,7 +14,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 export const Header = () => {
-  const { user, logout, isAuthenticated } = useAuth();
+  const { user, logout, loginWithGoogle, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
   const handleLogoClick = (e: React.MouseEvent) => {
@@ -63,14 +63,9 @@ export const Header = () => {
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <>
-              <Button variant="ghost" size="sm" className="gap-2" asChild>
-                <Link to="/login">
-                  <span className="hidden sm:inline">Sign In</span>
-                </Link>
-              </Button>
-
-            </>
+            <Button variant="ghost" size="sm" onClick={loginWithGoogle}>
+              Sign In
+            </Button>
           )}
         </nav>
       </div>
