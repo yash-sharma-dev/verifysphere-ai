@@ -58,7 +58,15 @@ public class VerificationService {
                     return createErrorResult("Invalid image format. Please upload a valid image file.");
                 }
                 imageDataUrl = input;
-                contentToAnalyze = "Analyze this image for credibility. Check for: 1) Signs of manipulation or editing, 2) Any text or claims visible in the image, 3) Context and authenticity of the visual content, 4) Whether the image appears to be misleading or misrepresenting information.";
+                // Pass 1: extract the claim from the image so we can search Tavily
+                logger.info("Pass 1: extracting claim from image...");
+                String extractedClaim = claudeClient.generateContent(
+                    "You extract factual claims from images. Respond with only the core claim or statement visible in the image, in one or two sentences. No explanation, no commentary.",
+                    "What claim or statement is being made in this image?",
+                    imageDataUrl
+                );
+                logger.info("Extracted claim: {}", extractedClaim);
+                contentToAnalyze = extractedClaim;
 
             } else if ("url".equalsIgnoreCase(type)) {
                 if (!urlContentExtractor.isUrl(input)) {
@@ -80,9 +88,9 @@ public class VerificationService {
                 contentToAnalyze = contentToAnalyze.substring(0, 100000) + "\n\n[Content truncated due to length]";
             }
 
-            // Run Tavily web search for text and URL types to ground the analysis
+            // Run Tavily search for all types — for images, contentToAnalyze is the extracted claim
             String searchResults = "";
-            if (imageDataUrl == null && contentToAnalyze != null) {
+            if (contentToAnalyze != null) {
                 String searchQuery = contentToAnalyze.length() > 300
                         ? contentToAnalyze.substring(0, 300)
                         : contentToAnalyze;
@@ -91,41 +99,37 @@ public class VerificationService {
             }
 
             String systemPrompt = """
-                You are a world-class fact-checking AI. Your goal is to analyze content and determine its credibility using the web search results provided to you as your primary source of truth.
+                You are a world-class fact-checking AI. Your job is to assess the truthfulness of the CLAIM being made — not the authenticity of a photo or the quality of writing.
 
-                CRITICAL: Base your analysis primarily on the web search results provided. If no search results are provided, use your knowledge but acknowledge uncertainty.
+                CRITICAL RULES:
+                - For images: judge the CLAIM in the image, not whether the photo looks real. A genuine photo can spread a false claim.
+                - Base your score primarily on the web search results provided. They are your ground truth.
+                - Known hoaxes, scams, or debunked viral content must score 0-20 even if the image/text looks authentic.
+                - If search results confirm a claim is a hoax or scam, score it 0-20 ("false").
+                - Do NOT hallucinate URLs. Only use URLs that appear in the web search results. Use "#" for all others.
 
-                You must respond ONLY with valid JSON. Do not include any markdown code blocks, explanations, or text outside the JSON.
+                You must respond ONLY with valid JSON. No markdown, no code blocks, no explanation outside the JSON.
 
-                The JSON must conform to this exact structure:
+                Required structure:
                 {
-                    "score": <integer 0-100 representing credibility>,
-                    "level": <one of: "true", "mostly-true", "uncertain", "mostly-false", "false">,
-                    "title": <short descriptive title for the content>,
-                    "explanation": <detailed, neutral, evidence-based explanation>,
+                    "score": <integer 0-100>,
+                    "level": <"true" | "mostly-true" | "uncertain" | "mostly-false" | "false">,
+                    "title": <short descriptive title>,
+                    "explanation": <detailed, evidence-based explanation>,
                     "evidence": [
                         {
                             "type": "supporting|contradicting|neutral",
-                            "title": "<evidence title>",
+                            "title": "<title>",
                             "source": "<source name>",
-                            "url": "<source URL or # if unavailable>",
-                            "excerpt": "<brief excerpt or description>"
+                            "url": "<URL from search results, or #>",
+                            "excerpt": "<brief excerpt>"
                         }
                     ],
-                    "community": {
-                        "upvotes": 0,
-                        "downvotes": 0,
-                        "comments": 0
-                    }
+                    "community": { "upvotes": 0, "downvotes": 0, "comments": 0 }
                 }
 
-                Rules:
-                - score must be 0-100. Avoid extremes (0 or 100) unless overwhelming evidence justifies it.
-                - level MUST match score: 0-20="false", 21-40="mostly-false", 41-60="uncertain", 61-80="mostly-true", 81-100="true"
-                - evidence must contain at least 2-3 items. Prefer using URLs from the web search results.
-                - All evidence fields are required: type, title, source, url, excerpt
-                - URLs must start with http:// or https://, or use "#" if unavailable
-                - Return ONLY the JSON object
+                Score-to-level mapping (strictly enforced):
+                0-20 = "false", 21-40 = "mostly-false", 41-60 = "uncertain", 61-80 = "mostly-true", 81-100 = "true"
                 """;
 
             String contentForPrompt = contentToAnalyze;
@@ -138,7 +142,12 @@ public class VerificationService {
             }
 
             String userPrompt;
-            if (!searchResults.isEmpty()) {
+            if (imageDataUrl != null) {
+                // For images: pass the extracted claim + search results, image is sent separately
+                userPrompt = searchResults.isEmpty()
+                    ? String.format("Analyze this image for credibility. The claim being made is: %s", contentForPrompt)
+                    : String.format("%s\n\nAnalyze this image for credibility. The claim being made is: %s", searchResults, contentForPrompt);
+            } else if (!searchResults.isEmpty()) {
                 userPrompt = String.format(
                     "%s\n\nPlease analyze the following content for credibility:\n\n%s",
                     searchResults, contentForPrompt
