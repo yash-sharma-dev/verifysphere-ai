@@ -32,6 +32,7 @@ export const AuthProvider = ({
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log("[auth] getSession:", session?.user?.email ?? "null");
       if (session?.user) {
         setUser({
           id: session.user.id,
@@ -43,7 +44,8 @@ export const AuthProvider = ({
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log("[auth] onAuthStateChange:", event, session?.user?.email ?? "null");
       if (session?.user) {
         setUser({
           id: session.user.id,
